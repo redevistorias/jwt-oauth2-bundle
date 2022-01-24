@@ -16,6 +16,7 @@ use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Event\ControllerEvent;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpKernel\KernelEvents;
+use JwtOAuth2Bundle\Repository\AccessTokenRepository;
 
 class ControllerListener implements EventSubscriberInterface
 {
@@ -99,8 +100,11 @@ class ControllerListener implements EventSubscriberInterface
     private function getAuthorizationData(Request $request)
     {
         $publicKey = $this->container->getParameter('jwt_o_auth2.public_key.file');
-        $repositoryName = $this->container->getParameter('jwt_o_auth2.access_token_repository.class');
-        $accessTokenRepository = $this->em->getRepository($repositoryName);
+        $accessTokenRepository = new AccessTokenRepository();
+        if (!empty($this->container->hasParameter('jwt_o_auth2.access_token_repository.class'))) {
+            $repositoryName = $this->container->getParameter('jwt_o_auth2.access_token_repository.class');
+            $accessTokenRepository = $this->em->getRepository($repositoryName);
+        }
 
         $server = new ResourceServer($accessTokenRepository, $publicKey);
 
