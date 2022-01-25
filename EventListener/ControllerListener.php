@@ -101,7 +101,8 @@ class ControllerListener implements EventSubscriberInterface
     {
         $publicKey = $this->container->getParameter('jwt_o_auth2.public_key.file');
         $accessTokenRepository = new AccessTokenRepository();
-        if (!empty($this->container->hasParameter('jwt_o_auth2.access_token_repository.class'))) {
+        if (!empty($this->container->hasParameter('jwt_o_auth2.access_token_repository.class'))
+                && !empty($this->container->getParameter('jwt_o_auth2.access_token_repository.class'))) {
             $repositoryName = $this->container->getParameter('jwt_o_auth2.access_token_repository.class');
             $accessTokenRepository = $this->em->getRepository($repositoryName);
         }

@@ -17,7 +17,8 @@ class JwtOAuth2Extension extends Extension
         $loader = new XmlFileLoader($container, new FileLocator(__DIR__.'/../Resources/config'));
         $loader->load('services.xml');
 
-        if (isset($config['access_token_repository']['class'])) {
+        if (in_array('class', $config['access_token_repository'])
+                && isset($config['access_token_repository']['class'])) {
             $container->setParameter(
                 'jwt_o_auth2.access_token_repository.class',
                 $config['access_token_repository']['class']
