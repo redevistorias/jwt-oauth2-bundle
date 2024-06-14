@@ -2,6 +2,7 @@
 
 namespace JwtOAuth2Bundle\Repository;
 
+use JwtOAuth2Bundle\Entity\AccessTokenEntity;
 use League\OAuth2\Server\Entities\AccessTokenEntityInterface;
 use League\OAuth2\Server\Entities\ClientEntityInterface;
 use League\OAuth2\Server\Repositories\AccessTokenRepositoryInterface;
