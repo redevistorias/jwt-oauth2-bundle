@@ -2,9 +2,8 @@
 
 namespace JwtOAuth2Bundle\EventListener;
 
-use Doctrine\Common\Annotations\Reader;
-use Doctrine\Common\Util\ClassUtils;
 use Doctrine\ORM\EntityManagerInterface;
+use JwtOAuth2Bundle\Attribute\Authenticated;
 use League\OAuth2\Server\Exception\OAuthServerException;
 use League\OAuth2\Server\ResourceServer;
 use Nyholm\Psr7\Factory\Psr17Factory;
@@ -20,16 +19,11 @@ use JwtOAuth2Bundle\Repository\AccessTokenRepository;
 
 class ControllerListener implements EventSubscriberInterface
 {
-
-    protected $reader;
     protected $container;
     private $em;
 
-    public function __construct(Reader $reader, ContainerInterface $container, EntityManagerInterface $em)
+    public function __construct(ContainerInterface $container, EntityManagerInterface $em)
     {
-        /** @var Reader $reader */
-        $this->reader = $reader;
-        /** @var ContainerInterface $container */
         $this->container = $container;
         $this->em = $em;
     }
@@ -40,10 +34,10 @@ class ControllerListener implements EventSubscriberInterface
         if (!is_array($controller)) {
             return;
         }
-        $annotation = $this->getAnnotation($controller);
-        $authorizationRequired = $annotation != null;
+        $attribute = $this->getAttribute($controller);
+        $authorizationRequired = $attribute !== null;
         if ($authorizationRequired) {
-            $authorizedScopes = $this->getAuthorizedScopes($annotation);
+            $authorizedScopes = $this->getAuthorizedScopes($attribute);
             $authorizationData = $this->getAuthorizationData($event->getRequest());
             if ($authorizedScopes) {
                 $this->checkIfRequestScopeIsAuthorized($authorizationData['scopes'], $authorizedScopes);
@@ -54,9 +48,9 @@ class ControllerListener implements EventSubscriberInterface
 
     public static function getSubscribedEvents()
     {
-        return array(
+        return [
             KernelEvents::CONTROLLER => 'onKernelController'
-        );
+        ];
     }
 
     public function setConfig($repositoryName, $publicKey)
@@ -65,33 +59,24 @@ class ControllerListener implements EventSubscriberInterface
         $this->publicKey = $publicKey;
     }
 
-    private function getAuthorizedScopes($annotation)
+    private function getAuthorizedScopes($attribute)
     {
-        $scopes = null;
-        if ($annotation) {
-            $scopes = $annotation->getScopes();
-        }
-        return $scopes;
+        return $attribute->getScopes();
     }
 
-    private function getAnnotation($controller)
+    private function getAttribute($controller)
     {
-        $annotationName = 'JwtOAuth2Bundle\Annotation\Authenticated';
-        list($controllerObject, $methodName) = $controller;
+        $reflectionClass = new \ReflectionClass($controller[0]);
+        $reflectionMethod = $reflectionClass->getMethod($controller[1]);
 
-        $controllerReflectionObject = new \ReflectionObject($controllerObject);
-        $reflectionMethod = $controllerReflectionObject->getMethod($methodName);
-        $methodAnnotation = $this->reader->getMethodAnnotation($reflectionMethod, $annotationName);
-        if ($methodAnnotation !== null) {
-            return $methodAnnotation;
+        $methodAttributes = $reflectionMethod->getAttributes(Authenticated::class);
+        if (!empty($methodAttributes)) {
+            return $methodAttributes[0]->newInstance();
         }
 
-        $classAnnotation = $this->reader->getClassAnnotation(
-            new \ReflectionClass(ClassUtils::getClass($controllerObject)),
-            $annotationName
-        );
-        if ($classAnnotation !== null) {
-            return $classAnnotation;
+        $classAttributes = $reflectionClass->getAttributes(Authenticated::class);
+        if (!empty($classAttributes)) {
+            return $classAttributes[0]->newInstance();
         }
 
         return null;
