@@ -8,7 +8,7 @@ use League\OAuth2\Server\Exception\OAuthServerException;
 use League\OAuth2\Server\ResourceServer;
 use Nyholm\Psr7\Factory\Psr17Factory;
 use Symfony\Bridge\PsrHttpMessage\Factory\PsrHttpFactory;
-use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
@@ -19,16 +19,13 @@ use JwtOAuth2Bundle\Repository\AccessTokenRepository;
 
 class ControllerListener implements EventSubscriberInterface
 {
-    protected $container;
-    private $em;
+    public function __construct(
+        private readonly ParameterBagInterface $params,
+        private readonly EntityManagerInterface $em,
+    ) {}
 
-    public function __construct(ContainerInterface $container, EntityManagerInterface $em)
-    {
-        $this->container = $container;
-        $this->em = $em;
-    }
 
-    public function onKernelController(ControllerEvent $event)
+    public function onKernelController(ControllerEvent $event): void
     {
         $controller = $event->getController();
         if (!is_array($controller)) {
@@ -46,25 +43,19 @@ class ControllerListener implements EventSubscriberInterface
         }
     }
 
-    public static function getSubscribedEvents()
+    public static function getSubscribedEvents(): array
     {
         return [
             KernelEvents::CONTROLLER => 'onKernelController'
         ];
     }
 
-    public function setConfig($repositoryName, $publicKey)
-    {
-        $this->repository = new $repositoryName();
-        $this->publicKey = $publicKey;
-    }
-
-    private function getAuthorizedScopes($attribute)
+    private function getAuthorizedScopes(Authenticated $attribute): ?array
     {
         return $attribute->getScopes();
     }
 
-    private function getAttribute($controller)
+    private function getAttribute(array $controller): ?Authenticated
     {
         $reflectionClass = new \ReflectionClass($controller[0]);
         $reflectionMethod = $reflectionClass->getMethod($controller[1]);
@@ -82,12 +73,12 @@ class ControllerListener implements EventSubscriberInterface
         return null;
     }
 
-    private function getAuthorizationData(Request $request)
+    private function getAuthorizationData(Request $request): array
     {
-        $publicKey = $this->container->getParameter('jwt_o_auth2.public_key.file');
+        $publicKey = $this->params->get('jwt_o_auth2.public_key.file');
         $accessTokenRepository = new AccessTokenRepository();
-        if ($this->container->hasParameter('jwt_o_auth2.access_token_repository.class') && !empty($this->container->getParameter('jwt_o_auth2.access_token_repository.class'))) {
-            $repositoryName = $this->container->getParameter('jwt_o_auth2.access_token_repository.class');
+        if ($this->params->has('jwt_o_auth2.access_token_repository.class') && !empty($this->params->get('jwt_o_auth2.access_token_repository.class'))) {
+            $repositoryName = $this->params->get('jwt_o_auth2.access_token_repository.class');
             $accessTokenRepository = $this->em->getRepository($repositoryName);
         }
 
@@ -109,7 +100,7 @@ class ControllerListener implements EventSubscriberInterface
         ];
     }
 
-    private function checkIfRequestScopeIsAuthorized($requestScopes, $authorizedScopes)
+    private function checkIfRequestScopeIsAuthorized(array $requestScopes, array $authorizedScopes): bool
     {
         foreach ($requestScopes as $requestScope) {
             if (in_array($requestScope, $authorizedScopes)) {
@@ -119,7 +110,7 @@ class ControllerListener implements EventSubscriberInterface
         throw new AccessDeniedHttpException("Access Denied by scope.");
     }
 
-    private function addAuthorizationDataInRequest(Request $request, $authorizationData)
+    private function addAuthorizationDataInRequest(Request $request, array $authorizationData): void
     {
         $request->request->add([
             'oauth_scopes'      => $authorizationData['scopes'],

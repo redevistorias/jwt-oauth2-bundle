@@ -11,7 +11,7 @@
     <services>
         <service id="jwt_o_auth2.controller.listener" class="JwtOAuth2Bundle\EventListener\ControllerListener" public="false">
             <tag name="kernel.event_subscriber" />
-            <argument type="service" id="service_container" />
+            <argument type="service" id="parameter_bag" />
             <argument type="service" id="doctrine.orm.entity_manager" />
         </service>
     </services>
