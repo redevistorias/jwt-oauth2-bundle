@@ -9,7 +9,7 @@ class Authenticated
 {
     private $scopes;
 
-    public function __construct(array $scopes = null)
+    public function __construct(?array $scopes = null)
     {
         $this->scopes = $scopes;
     }
